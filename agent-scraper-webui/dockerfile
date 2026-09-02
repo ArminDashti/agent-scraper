@@ -1,0 +1,17 @@
+# syntax=docker/dockerfile:1
+# Build: docker build -f dockerfile -t agent-scraper-webui:latest .
+
+FROM node:22-alpine AS build
+WORKDIR /src
+COPY package.json package-lock.json* ./
+RUN npm install
+COPY . .
+ENV VITE_API_BASE_URL=
+RUN npx vite build
+
+FROM nginx:1.27-alpine
+COPY --from=build /src/dist /usr/share/nginx/html
+COPY nginx.conf.template /etc/nginx/templates/default.conf.template
+ENV API_HOST=agent-scraper-api
+ENV API_PORT=8196
+EXPOSE 80

@@ -1,0 +1,6 @@
+.git
+.armin
+.tmp
+tmp
+.env
+*.md

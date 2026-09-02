@@ -1,0 +1,54 @@
+name: agent-scraper
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: agent-scraper-postgres
+    environment:
+      POSTGRES_USER: agentscraper
+      POSTGRES_PASSWORD: agentscraper
+      POSTGRES_DB: agentscraper
+    ports:
+      - "5456:5432"
+    volumes:
+      - agent_scraper_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U agentscraper -d agentscraper"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - agent-scraper-net
+    restart: "no"
+
+  agent-scraper-api:
+    image: ${IMAGE_TAG:-agent-scraper-api:latest}
+    container_name: agent-scraper-api
+    environment:
+      HTTP_ADDR: ":${INTERNAL_PORT:-8196}"
+      DATABASE_URL: postgres://agentscraper:agentscraper@postgres:5432/agentscraper?sslmode=disable
+      JWT_SECRET: ${JWT_SECRET:-change-me-in-production}
+      DEFAULT_USERNAME: ${DEFAULT_USERNAME:-armin}
+      DEFAULT_PASSWORD: ${DEFAULT_PASSWORD:-dopadopa123}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://127.0.0.1:5196,http://localhost:5196}
+      CRON_SCHEDULE: ${CRON_SCHEDULE:-0 2 * * *}
+      TARGET_API_URL: ${TARGET_API_URL:-}
+    expose:
+      - "${INTERNAL_PORT:-8196}"
+    ports:
+      - target: ${INTERNAL_PORT:-8196}
+        published: ${PUBLISH_PORT:-8196}
+        protocol: tcp
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - agent-scraper-net
+    restart: "no"
+
+networks:
+  agent-scraper-net:
+    name: ${DOCKER_NETWORK:-agent-scraper-net}
+    external: true
+
+volumes:
+  agent_scraper_pgdata:
